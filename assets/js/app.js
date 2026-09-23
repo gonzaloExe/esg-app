@@ -63,6 +63,7 @@
                     </div>
                     <p class="mb-2 text-muted">${escapeHtml(t.descripcion)}</p>
                     <small class="text-secondary">
+                        <strong>NI PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} ·
                         <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}
                         ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
                     </small>
@@ -130,7 +131,10 @@
                             <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
                             ${t.foto ? '<span class="small text-secondary"><i class="fa-regular fa-image"></i> Foto adjunta</span>' : ''}
                         </td>
-                        <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
+                        <td>
+                            <strong>NI: ${escapeHtml(t.numero_identificacion_pc)}</strong><br>
+                            ${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small>
+                        </td>
                         <td>${escapeHtml(t.fecha)}</td>
                         <td>${badgeEstado(t.estado)}</td>
                         <td class="text-end text-nowrap">

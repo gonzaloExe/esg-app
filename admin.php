@@ -57,6 +57,7 @@ try {
                                 <th>ID</th>
                                 <th>Ticket</th>
                                 <th>Origen</th>
+                                <th>NI PC</th>
                                 <th>Fecha</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>

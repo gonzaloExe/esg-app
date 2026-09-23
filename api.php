@@ -79,7 +79,7 @@ try {
                 $usuario = exigirUsuarioAPI();
 
                 $stmt = db()->prepare(
-                    'SELECT id, titulo, descripcion, foto, fecha, estado, resuelto_por, fecha_resolucion
+                    'SELECT id, titulo, descripcion, foto, numero_identificacion_pc, fecha, estado, resuelto_por, fecha_resolucion
                      FROM tickets
                      WHERE pc_identificador = ?
                      ORDER BY fecha DESC'
@@ -93,7 +93,7 @@ try {
 
                 $stmt = db()->query(
                     'SELECT id, titulo, descripcion, foto, pc_origen, usuario_origen,
-                            fecha, estado, resuelto_por, fecha_resolucion
+                            numero_identificacion_pc, fecha, estado, resuelto_por, fecha_resolucion
                      FROM tickets ORDER BY fecha DESC'
                 );
 
@@ -140,6 +140,7 @@ try {
                 $usuario = exigirUsuarioAPI();
 
                 $titulo = validarTexto((string)($_POST['titulo'] ?? ''), 255);
+                $numeroIdentificacionPC = validarTexto((string)($_POST['numero_identificacion_pc'] ?? ''), 100);
                 $descripcion = trim((string)($_POST['descripcion'] ?? ''));
 
                 if (mb_strlen($descripcion) < 10 || mb_strlen($descripcion) > 10000) {
@@ -151,8 +152,8 @@ try {
 
                 $stmt = db()->prepare(
                     'INSERT INTO tickets
-                    (titulo, descripcion, foto, pc_origen, usuario_origen, pc_identificador, ip_origen)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)'
+                    (titulo, descripcion, foto, pc_origen, usuario_origen, pc_identificador, numero_identificacion_pc, ip_origen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
 
                 $stmt->execute([
@@ -162,6 +163,7 @@ try {
                     $datos['pc_nombre'],
                     $datos['usuario'],
                     $datos['pc_id'],
+                    $numeroIdentificacionPC,
                     $datos['ip']
                 ]);
 

@@ -338,6 +338,8 @@ Esta versión no puede hacerlo únicamente con PHP y un navegador. Para identifi
 ## Versión
 
 ESG 1.0.0
-# esg-app
-# esg-app
-# esg-app
+
+
+## Número de identificación de la PC
+
+Al crear un ticket, el campo **Número de identificación de la PC** es obligatorio. Se guarda en `tickets.numero_identificacion_pc` y se muestra en el listado del usuario y en el panel de administración.

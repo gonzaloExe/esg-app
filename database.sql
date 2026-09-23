@@ -21,12 +21,14 @@ CREATE TABLE IF NOT EXISTS tickets (
     pc_origen VARCHAR(100) NOT NULL,
     usuario_origen VARCHAR(100) NOT NULL,
     pc_identificador VARCHAR(100) NOT NULL,
+    numero_identificacion_pc VARCHAR(100) NOT NULL DEFAULT '',
     ip_origen VARCHAR(45) NULL,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     estado ENUM('pendiente','resuelto') DEFAULT 'pendiente',
     resuelto_por VARCHAR(100) NULL,
     fecha_resolucion DATETIME NULL,
     INDEX idx_tickets_pc (pc_identificador),
+    INDEX idx_tickets_ni (numero_identificacion_pc),
     INDEX idx_tickets_estado (estado),
     INDEX idx_tickets_fecha (fecha)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

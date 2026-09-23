@@ -50,6 +50,12 @@ try {
                         <input type="hidden" name="accion" value="crear_ticket">
 
                         <div class="mb-3">
+                            <label class="form-label">Número de identificación de la PC</label>
+                            <input type="text" name="numero_identificacion_pc" class="form-control form-control-lg" maxlength="100" required>
+                            <div class="form-text">Ingresá el número de identificación que figura en la PC afectada.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Título</label>
                             <input type="text" name="titulo" class="form-control form-control-lg" maxlength="255" required>
                         </div>
