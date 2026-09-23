@@ -1,5 +1,4 @@
-/* ESG - JavaScript principal, sin frameworks */
-
+/* ESG - JavaScript principal */
 (function () {
     'use strict';
 
@@ -7,21 +6,11 @@
         const method = opciones.method || 'GET';
         let url = 'api.php?accion=' + encodeURIComponent(accion);
         const fetchOptions = { method };
-
-        if (method === 'POST') {
-            fetchOptions.body = opciones.body;
-        }
+        if (method === 'POST') fetchOptions.body = opciones.body;
 
         const response = await fetch(url, fetchOptions);
-        const data = await response.json().catch(() => ({
-            ok: false,
-            error: 'Respuesta inválida del servidor.'
-        }));
-
-        if (!response.ok || !data.ok) {
-            throw new Error(data.error || 'Error en la operación.');
-        }
-
+        const data = await response.json().catch(() => ({ ok: false, error: 'Respuesta inválida del servidor.' }));
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Error en la operación.');
         return data;
     };
 
@@ -31,46 +20,45 @@
         return div.innerHTML;
     };
 
-    const badgeEstado = (estado) => {
-        return estado === 'resuelto'
-            ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
-            : '<span class="badge text-bg-warning">🟡 Pendiente</span>';
-    };
+    const fotoUrl = (id) => `foto.php?id=${encodeURIComponent(id)}&v=${Date.now()}`;
+
+    const fotoHtml = (ticketId, clase = 'ticket-foto') => `
+        <div class="mt-2">
+            <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" title="Abrir foto completa">
+                <img src="${fotoUrl(ticketId)}" alt="Foto del ticket" class="img-fluid rounded border ${clase}" loading="lazy"
+                     onerror="this.outerHTML='<div class=\\\"alert alert-warning py-2 mb-0\\\">No se pudo cargar la foto. <a href=\\\"foto.php?id=${encodeURIComponent(ticketId)}\\\" target=\\\"_blank\\\">Abrir foto</a></div>'">
+            </a>
+        </div>`;
+
+    const badgeEstado = (estado) => estado === 'resuelto'
+        ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
+        : '<span class="badge text-bg-warning">🟡 Pendiente</span>';
 
     async function cargarMisTickets() {
         const contenedor = document.getElementById('misTickets');
         if (!contenedor) return;
-
         contenedor.innerHTML = '<div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
 
         try {
             const data = await api('obtener_mis_tickets');
-
             if (!data.tickets.length) {
-                contenedor.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fa-regular fa-folder-open fa-2x mb-2"></i>
-                        <p class="mb-0">Todavía no tenés tickets.</p>
-                    </div>`;
+                contenedor.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open fa-2x mb-2"></i><p class="mb-0">Todavía no tenés tickets.</p></div>';
                 return;
             }
 
             contenedor.innerHTML = data.tickets.map(t => `
                 <article class="ticket-item">
                     <div class="d-flex justify-content-between gap-2">
-                        <h3 class="h6 mb-1">${escapeHtml(t.titulo)}</h3>
+                        <h3 class="h6 mb-1">#${t.id} — ${escapeHtml(t.titulo)}</h3>
                         ${badgeEstado(t.estado)}
                     </div>
                     <p class="mb-2 text-muted">${escapeHtml(t.descripcion)}</p>
                     <div class="small text-secondary mb-2">
-                        <strong>NI PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} ·
+                        <strong>Número de identificación de la PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} ·
                         <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}
                         ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
                     </div>
-                    ${t.foto ? `
-                        <a href="foto.php?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
-                            <img src="foto.php?id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto" loading="lazy">
-                        </a>` : ''}
+                    ${t.foto ? fotoHtml(t.id, 'ticket-foto') : '<div class="small text-muted">Sin foto adjunta.</div>'}
                 </article>
             `).join('');
         } catch (error) {
@@ -80,30 +68,17 @@
 
     async function enviarTicket(event) {
         event.preventDefault();
-
         const form = event.currentTarget;
         const boton = form.querySelector('button[type="submit"]');
         boton.disabled = true;
-
         try {
             const formData = new FormData(form);
             await api('crear_ticket', { method: 'POST', body: formData });
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'Ticket enviado',
-                text: 'La incidencia fue registrada correctamente.',
-                confirmButtonText: 'Aceptar'
-            });
-
+            await Swal.fire({ icon: 'success', title: 'Ticket enviado', text: 'La incidencia fue registrada correctamente.', confirmButtonText: 'Aceptar' });
             form.reset();
             await cargarMisTickets();
         } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: 'No se pudo enviar',
-                text: error.message
-            });
+            await Swal.fire({ icon: 'error', title: 'No se pudo enviar', text: error.message });
         } finally {
             boton.disabled = false;
         }
@@ -133,22 +108,15 @@
                         <td>
                             <strong>${escapeHtml(t.titulo)}</strong>
                             <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
-                            ${t.foto ? `
-                                <a href="foto.php?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
-                                    <img src="foto.php?id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto-admin mt-2" loading="lazy">
-                                </a>` : '<span class="small text-muted">Sin foto</span>'}
+                            ${t.foto ? fotoHtml(t.id, 'ticket-foto-admin') : '<span class="small text-muted">Sin foto adjunta</span>'}
                         </td>
                         <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
                         <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
                         <td>${escapeHtml(t.fecha)}</td>
                         <td>${badgeEstado(t.estado)}</td>
                         <td class="text-end text-nowrap">
-                            ${t.estado === 'pendiente'
-                                ? `<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>`
-                                : ''}
-                            <button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            ${t.estado === 'pendiente' ? `<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>` : ''}
+                            <button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('')
@@ -162,11 +130,7 @@
                     <td>${Number(u.activo) === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-secondary">Inactivo</span>'}</td>
                     <td>${escapeHtml(u.fecha_ultima_conexion || '-')}</td>
                     <td class="text-end">
-                        ${u.rol === 'usuario'
-                            ? `<button class="btn btn-sm ${Number(u.activo) === 1 ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="ESGApp.toggleUsuario(${u.id})">
-                                ${Number(u.activo) === 1 ? 'Desactivar' : 'Activar'}
-                               </button>`
-                            : '<span class="text-muted">Protegido</span>'}
+                        ${u.rol === 'usuario' ? `<button class="btn btn-sm ${Number(u.activo) === 1 ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="ESGApp.toggleUsuario(${u.id})">${Number(u.activo) === 1 ? 'Desactivar' : 'Activar'}</button>` : '<span class="text-muted">Protegido</span>'}
                     </td>
                 </tr>
             `).join('');
@@ -178,71 +142,28 @@
     async function postSimple(accion, datos) {
         const formData = new FormData();
         formData.append('csrf', window.ESG.csrf);
-
         Object.entries(datos).forEach(([k, v]) => formData.append(k, v));
-
         return api(accion, { method: 'POST', body: formData });
     }
 
     window.ESGApp = {
         marcarHecho: async function (id) {
-            const confirmacion = await Swal.fire({
-                icon: 'question',
-                title: '¿Marcar como hecho?',
-                text: 'El ticket pasará a estado resuelto.',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, marcar',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (!confirmacion.isConfirmed) return;
-
-            try {
-                await postSimple('marcar_hecho', { id });
-                await cargarAdmin();
-            } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-            }
+            const c = await Swal.fire({ icon: 'question', title: '¿Marcar como hecho?', text: 'El ticket pasará a estado resuelto.', showCancelButton: true, confirmButtonText: 'Sí, marcar', cancelButtonText: 'Cancelar' });
+            if (!c.isConfirmed) return;
+            try { await postSimple('marcar_hecho', { id }); await cargarAdmin(); }
+            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
         },
-
         borrarTicket: async function (id) {
-            const confirmacion = await Swal.fire({
-                icon: 'warning',
-                title: '¿Borrar ticket?',
-                text: 'Esta acción elimina el ticket permanentemente.',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, borrar',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (!confirmacion.isConfirmed) return;
-
-            try {
-                await postSimple('borrar_ticket', { id });
-                await cargarAdmin();
-            } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-            }
+            const c = await Swal.fire({ icon: 'warning', title: '¿Borrar ticket?', text: 'Esta acción elimina el ticket permanentemente.', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+            if (!c.isConfirmed) return;
+            try { await postSimple('borrar_ticket', { id }); await cargarAdmin(); }
+            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
         },
-
         toggleUsuario: async function (id) {
-            const confirmacion = await Swal.fire({
-                icon: 'question',
-                title: 'Cambiar estado del usuario',
-                text: '¿Deseás activar/desactivar este usuario?',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, cambiar',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (!confirmacion.isConfirmed) return;
-
-            try {
-                await postSimple('desactivar_usuario', { id });
-                await cargarAdmin();
-            } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-            }
+            const c = await Swal.fire({ icon: 'question', title: 'Cambiar estado del usuario', text: '¿Deseás activar/desactivar este usuario?', showCancelButton: true, confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar' });
+            if (!c.isConfirmed) return;
+            try { await postSimple('desactivar_usuario', { id }); await cargarAdmin(); }
+            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
         }
     };
 
@@ -251,10 +172,8 @@
         if (ticketForm) {
             ticketForm.addEventListener('submit', enviarTicket);
             cargarMisTickets();
-
             document.getElementById('btnActualizar')?.addEventListener('click', cargarMisTickets);
         }
-
         if (document.getElementById('tablaTickets')) {
             cargarAdmin();
             document.getElementById('btnActualizarAdmin')?.addEventListener('click', cargarAdmin);

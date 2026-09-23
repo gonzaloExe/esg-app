@@ -349,3 +349,9 @@ Al crear un ticket, el campo **Número de identificación de la PC** es obligato
 - El NI de la PC es obligatorio en cada ticket.
 - El usuario puede ver el NI y la foto de sus propios tickets.
 - El SuperAdmin puede ver el NI y las fotos de todos los tickets.
+
+
+## Actualización 2026-09-23
+- NI de PC obligatorio y visible en tickets.
+- Fotos visibles para el usuario propietario y SuperAdmin.
+- Cache-busting del JavaScript para evitar que el navegador conserve la interfaz anterior.
