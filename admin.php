@@ -50,6 +50,25 @@ try {
                         <i class="fa-solid fa-rotate me-1"></i>Actualizar
                     </button>
                 </div>
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="filtroFecha" class="form-label mb-1">Buscar por fecha</label>
+                        <input type="date" id="filtroFecha" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroNI" class="form-label mb-1">Buscar por NI de PC</label>
+                        <input type="text" id="filtroNI" class="form-control" placeholder="Ej.: PC-047">
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="button" id="btnAplicarFiltros" class="btn btn-primary flex-fill">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i>Buscar
+                        </button>
+                        <button type="button" id="btnLimpiarFiltros" class="btn btn-outline-secondary flex-fill">
+                            <i class="fa-solid fa-eraser me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+                <div id="resultadoFiltros" class="small text-muted mb-2"></div>
                 <div class="table-responsive">
                     <table class="table align-middle" id="tablaTickets">
                         <thead>
@@ -100,6 +119,6 @@ window.ESG = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="assets/js/app.js?v=20260923-ver"></script>
+<script src="assets/js/app.js?v=20260923-filtros"></script>
 </body>
 </html>

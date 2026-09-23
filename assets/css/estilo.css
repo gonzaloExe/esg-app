@@ -120,3 +120,8 @@ code {
         white-space: normal;
     }
 }
+
+/* Filtros del panel de administración */
+#resultadoFiltros { min-height: 1.25rem; }
+#filtroFecha, #filtroNI { min-height: 42px; }
+#btnAplicarFiltros, #btnLimpiarFiltros { min-height: 42px; }

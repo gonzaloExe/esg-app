@@ -35,6 +35,65 @@
            </a>`
         : '<span class="text-muted small">Sin foto</span>';
 
+    let ticketsAdminCache = [];
+
+    const normalizarFechaTicket = (valor) => {
+        const texto = String(valor ?? '').trim();
+        const iso = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (iso) return iso[1];
+        const latam = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (latam) return `${latam[3]}-${latam[2]}-${latam[1]}`;
+        return '';
+    };
+
+    const obtenerFiltrosAdmin = () => ({
+        fecha: document.getElementById('filtroFecha')?.value || '',
+        ni: (document.getElementById('filtroNI')?.value || '').trim().toLowerCase()
+    });
+
+    const ticketsFiltradosAdmin = () => {
+        const { fecha, ni } = obtenerFiltrosAdmin();
+        return ticketsAdminCache.filter((t) => {
+            const coincideFecha = !fecha || normalizarFechaTicket(t.fecha) === fecha;
+            const coincideNI = !ni || String(t.numero_identificacion_pc ?? '').toLowerCase().includes(ni);
+            return coincideFecha && coincideNI;
+        });
+    };
+
+    const renderTicketsAdmin = () => {
+        const tbody = document.querySelector('#tablaTickets tbody');
+        if (!tbody) return;
+        const tickets = ticketsFiltradosAdmin();
+        const total = ticketsAdminCache.length;
+        const resultado = document.getElementById('resultadoFiltros');
+        const tieneFiltros = obtenerFiltrosAdmin();
+        if (resultado) {
+            resultado.textContent = (tieneFiltros.fecha || tieneFiltros.ni)
+                ? `Mostrando ${tickets.length} de ${total} tickets.`
+                : `${total} tickets registrados.`;
+        }
+        tbody.innerHTML = tickets.length
+            ? tickets.map(t => `
+                    <tr>
+                        <td>${t.id}</td>
+                        <td>
+                            <strong>${escapeHtml(t.titulo)}</strong>
+                            <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
+                        </td>
+                        <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
+                        <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
+                        <td>${fotoCellHtml(t.id, !!t.foto)}</td>
+                        <td>${escapeHtml(t.fecha)}</td>
+                        <td>${badgeEstado(t.estado)}</td>
+                        <td class="text-end text-nowrap">
+                            ${t.estado === 'pendiente' ? `<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>` : ''}
+                            <button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('')
+            : '<tr><td colspan="8" class="text-center text-muted py-4">No hay tickets que coincidan con los filtros.</td></tr>';
+    };
+
     const badgeEstado = (estado) => estado === 'resuelto'
         ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
         : '<span class="badge text-bg-warning">🟡 Pendiente</span>';
@@ -107,26 +166,8 @@
             document.getElementById('statResueltos').textContent = stats.estadisticas.resueltos;
             document.getElementById('statUsuarios').textContent = stats.estadisticas.usuarios;
 
-            tbodyTickets.innerHTML = tickets.tickets.length
-                ? tickets.tickets.map(t => `
-                    <tr>
-                        <td>${t.id}</td>
-                        <td>
-                            <strong>${escapeHtml(t.titulo)}</strong>
-                            <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
-                        </td>
-                        <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
-                        <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
-                        <td>${fotoCellHtml(t.id, !!t.foto)}</td>
-                        <td>${escapeHtml(t.fecha)}</td>
-                        <td>${badgeEstado(t.estado)}</td>
-                        <td class="text-end text-nowrap">
-                            ${t.estado === 'pendiente' ? `<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>` : ''}
-                            <button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `).join('')
-                : '<tr><td colspan="8" class="text-center text-muted py-4">No hay tickets.</td></tr>';
+            ticketsAdminCache = tickets.tickets || [];
+            renderTicketsAdmin();
 
             tbodyUsuarios.innerHTML = usuarios.usuarios.map(u => `
                 <tr>
@@ -183,6 +224,18 @@
         if (document.getElementById('tablaTickets')) {
             cargarAdmin();
             document.getElementById('btnActualizarAdmin')?.addEventListener('click', cargarAdmin);
+            document.getElementById('btnAplicarFiltros')?.addEventListener('click', renderTicketsAdmin);
+            document.getElementById('btnLimpiarFiltros')?.addEventListener('click', () => {
+                const fecha = document.getElementById('filtroFecha');
+                const ni = document.getElementById('filtroNI');
+                if (fecha) fecha.value = '';
+                if (ni) ni.value = '';
+                renderTicketsAdmin();
+            });
+            document.getElementById('filtroNI')?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') renderTicketsAdmin();
+            });
+            document.getElementById('filtroFecha')?.addEventListener('change', renderTicketsAdmin);
         }
     });
 })();
