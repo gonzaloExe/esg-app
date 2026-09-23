@@ -22,21 +22,26 @@
 
     const fotoUrl = (id) => `foto.php?id=${encodeURIComponent(id)}`;
 
-    const fotoHtml = (ticketId, clase = 'ticket-foto') => `
+    const fotoHtml = (ticketId) => `
         <div class="ticket-photo-box">
-            <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" title="Abrir foto completa">
-                <img src="${fotoUrl(ticketId)}" alt="Foto del ticket #${ticketId}" class="img-fluid rounded border ${clase}" loading="lazy">
+            <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" title="Abrir foto">
+                <img src="${fotoUrl(ticketId)}" alt="Foto del ticket #${ticketId}" class="ticket-photo-thumb" loading="lazy">
             </a>
-            <div class="mt-2">
-                <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
-                    <i class="fa-solid fa-image me-1"></i>Ver foto completa
+            <div class="ticket-photo-actions">
+                <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-eye me-1"></i>Ver foto
                 </a>
             </div>
         </div>`;
 
     const fotoCellHtml = (ticketId, tieneFoto) => tieneFoto
-        ? `<div class="d-flex flex-column align-items-start gap-2">${fotoHtml(ticketId, 'ticket-foto-admin')}<a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="fa-solid fa-image me-1"></i>Abrir foto</a></div>`
-        : '<span class="text-muted">Sin foto</span>';
+        ? `<div class="ticket-photo-admin">
+                <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" title="Abrir foto">
+                    <img src="${fotoUrl(ticketId)}" alt="Foto del ticket #${ticketId}" class="ticket-photo-thumb" loading="lazy">
+                </a>
+                <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-eye me-1"></i>Ver</a>
+           </div>`
+        : '<span class="text-muted small">Sin foto</span>';
 
     const badgeEstado = (estado) => estado === 'resuelto'
         ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
