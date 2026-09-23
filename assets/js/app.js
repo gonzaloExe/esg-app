@@ -20,15 +20,23 @@
         return div.innerHTML;
     };
 
-    const fotoUrl = (id) => `foto.php?id=${encodeURIComponent(id)}&v=${Date.now()}`;
+    const fotoUrl = (id) => `foto.php?id=${encodeURIComponent(id)}`;
 
     const fotoHtml = (ticketId, clase = 'ticket-foto') => `
-        <div class="mt-2">
+        <div class="ticket-photo-box">
             <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" title="Abrir foto completa">
-                <img src="${fotoUrl(ticketId)}" alt="Foto del ticket" class="img-fluid rounded border ${clase}" loading="lazy"
-                     onerror="this.outerHTML='<div class=\\\"alert alert-warning py-2 mb-0\\\">No se pudo cargar la foto. <a href=\\\"foto.php?id=${encodeURIComponent(ticketId)}\\\" target=\\\"_blank\\\">Abrir foto</a></div>'">
+                <img src="${fotoUrl(ticketId)}" alt="Foto del ticket #${ticketId}" class="img-fluid rounded border ${clase}" loading="lazy">
             </a>
+            <div class="mt-2">
+                <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-image me-1"></i>Ver foto completa
+                </a>
+            </div>
         </div>`;
+
+    const fotoCellHtml = (ticketId, tieneFoto) => tieneFoto
+        ? `<div class="d-flex flex-column align-items-start gap-2">${fotoHtml(ticketId, 'ticket-foto-admin')}<a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="fa-solid fa-image me-1"></i>Abrir foto</a></div>`
+        : '<span class="text-muted">Sin foto</span>';
 
     const badgeEstado = (estado) => estado === 'resuelto'
         ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
@@ -58,6 +66,7 @@
                         <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}
                         ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
                     </div>
+                    <div class="mt-2"><strong>Fotos:</strong></div>
                     ${t.foto ? fotoHtml(t.id, 'ticket-foto') : '<div class="small text-muted">Sin foto adjunta.</div>'}
                 </article>
             `).join('');
@@ -108,10 +117,10 @@
                         <td>
                             <strong>${escapeHtml(t.titulo)}</strong>
                             <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
-                            ${t.foto ? fotoHtml(t.id, 'ticket-foto-admin') : '<span class="small text-muted">Sin foto adjunta</span>'}
                         </td>
                         <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
                         <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
+                        <td>${fotoCellHtml(t.id, !!t.foto)}</td>
                         <td>${escapeHtml(t.fecha)}</td>
                         <td>${badgeEstado(t.estado)}</td>
                         <td class="text-end text-nowrap">
@@ -120,7 +129,7 @@
                         </td>
                     </tr>
                 `).join('')
-                : '<tr><td colspan="7" class="text-center text-muted py-4">No hay tickets.</td></tr>';
+                : '<tr><td colspan="8" class="text-center text-muted py-4">No hay tickets.</td></tr>';
 
             tbodyUsuarios.innerHTML = usuarios.usuarios.map(u => `
                 <tr>

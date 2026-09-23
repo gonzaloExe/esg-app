@@ -58,6 +58,7 @@ try {
                                 <th>Ticket</th>
                                 <th>Origen</th>
                                 <th>NI PC</th>
+                                <th>Fotos</th>
                                 <th>Fecha</th>
                                 <th>Estado</th>
                                 <th class="text-end">Acciones</th>
@@ -99,6 +100,6 @@ window.ESG = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/app.js?v=20260923-fotos"></script>
 </body>
 </html>

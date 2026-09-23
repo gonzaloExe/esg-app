@@ -355,3 +355,7 @@ Al crear un ticket, el campo **Número de identificación de la PC** es obligato
 - NI de PC obligatorio y visible en tickets.
 - Fotos visibles para el usuario propietario y SuperAdmin.
 - Cache-busting del JavaScript para evitar que el navegador conserve la interfaz anterior.
+
+
+## Fotos de tickets
+El panel de administración muestra una columna **Fotos** para cada ticket. Los usuarios ven una sección **Fotos** dentro de sus tickets. Cada imagen se abre mediante `foto.php`, que comprueba los permisos antes de enviar el archivo.
