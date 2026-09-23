@@ -68,8 +68,8 @@
                         ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
                     </div>
                     ${t.foto ? `
-                        <a href="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
-                            <img src="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto" loading="lazy">
+                        <a href="foto.php?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
+                            <img src="foto.php?id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto" loading="lazy">
                         </a>` : ''}
                 </article>
             `).join('');
@@ -134,8 +134,8 @@
                             <strong>${escapeHtml(t.titulo)}</strong>
                             <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
                             ${t.foto ? `
-                                <a href="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
-                                    <img src="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto-admin mt-2" loading="lazy">
+                                <a href="foto.php?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
+                                    <img src="foto.php?id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto-admin mt-2" loading="lazy">
                                 </a>` : '<span class="small text-muted">Sin foto</span>'}
                         </td>
                         <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
