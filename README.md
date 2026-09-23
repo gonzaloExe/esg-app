@@ -343,3 +343,9 @@ ESG 1.0.0
 ## Número de identificación de la PC
 
 Al crear un ticket, el campo **Número de identificación de la PC** es obligatorio. Se guarda en `tickets.numero_identificacion_pc` y se muestra en el listado del usuario y en el panel de administración.
+
+
+## Última actualización
+- El NI de la PC es obligatorio en cada ticket.
+- El usuario puede ver el NI y la foto de sus propios tickets.
+- El SuperAdmin puede ver el NI y las fotos de todos los tickets.

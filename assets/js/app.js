@@ -62,11 +62,15 @@
                         ${badgeEstado(t.estado)}
                     </div>
                     <p class="mb-2 text-muted">${escapeHtml(t.descripcion)}</p>
-                    <small class="text-secondary">
+                    <div class="small text-secondary mb-2">
                         <strong>NI PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} ·
                         <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}
                         ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
-                    </small>
+                    </div>
+                    ${t.foto ? `
+                        <a href="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
+                            <img src="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto" loading="lazy">
+                        </a>` : ''}
                 </article>
             `).join('');
         } catch (error) {
@@ -129,12 +133,13 @@
                         <td>
                             <strong>${escapeHtml(t.titulo)}</strong>
                             <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
-                            ${t.foto ? '<span class="small text-secondary"><i class="fa-regular fa-image"></i> Foto adjunta</span>' : ''}
+                            ${t.foto ? `
+                                <a href="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">
+                                    <img src="api.php?accion=ver_foto&id=${encodeURIComponent(t.id)}" alt="Foto del ticket" class="img-fluid rounded border ticket-foto-admin mt-2" loading="lazy">
+                                </a>` : '<span class="small text-muted">Sin foto</span>'}
                         </td>
-                        <td>
-                            <strong>NI: ${escapeHtml(t.numero_identificacion_pc)}</strong><br>
-                            ${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small>
-                        </td>
+                        <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
+                        <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
                         <td>${escapeHtml(t.fecha)}</td>
                         <td>${badgeEstado(t.estado)}</td>
                         <td class="text-end text-nowrap">
@@ -147,7 +152,7 @@
                         </td>
                     </tr>
                 `).join('')
-                : '<tr><td colspan="6" class="text-center text-muted py-4">No hay tickets.</td></tr>';
+                : '<tr><td colspan="7" class="text-center text-muted py-4">No hay tickets.</td></tr>';
 
             tbodyUsuarios.innerHTML = usuarios.usuarios.map(u => `
                 <tr>

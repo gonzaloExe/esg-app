@@ -74,6 +74,48 @@ try {
     }
 
     if ($metodo === 'GET') {
+        if ($accion === 'ver_foto') {
+            $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
+            if (!$id || $id < 1) {
+                http_response_code(422);
+                exit('Foto inválida.');
+            }
+
+            $usuario = exigirUsuarioAPI();
+            $stmt = db()->prepare('SELECT foto, pc_identificador FROM tickets WHERE id = ?');
+            $stmt->execute([$id]);
+            $ticket = $stmt->fetch();
+
+            if (!$ticket || empty($ticket['foto'])) {
+                http_response_code(404);
+                exit('Foto no encontrada.');
+            }
+
+            if ($usuario['rol'] !== 'superadmin' && $ticket['pc_identificador'] !== $usuario['pc_identificador']) {
+                http_response_code(403);
+                exit('Sin permiso.');
+            }
+
+            $archivo = __DIR__ . '/uploads/' . basename($ticket['foto']);
+            if (!is_file($archivo)) {
+                http_response_code(404);
+                exit('Archivo no encontrado.');
+            }
+
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($archivo) ?: 'application/octet-stream';
+            if (!in_array($mime, ['image/jpeg', 'image/png'], true)) {
+                http_response_code(415);
+                exit('Tipo de archivo no permitido.');
+            }
+
+            header('Content-Type: ' . $mime);
+            header('Content-Length: ' . (string)filesize($archivo));
+            header('X-Content-Type-Options: nosniff');
+            readfile($archivo);
+            exit;
+        }
+
         switch ($accion) {
             case 'obtener_mis_tickets':
                 $usuario = exigirUsuarioAPI();
