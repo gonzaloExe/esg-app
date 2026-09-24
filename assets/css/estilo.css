@@ -125,3 +125,7 @@ code {
 #resultadoFiltros { min-height: 1.25rem; }
 #filtroFecha, #filtroNI { min-height: 42px; }
 #btnAplicarFiltros, #btnLimpiarFiltros { min-height: 42px; }
+
+/* Registro del agente */
+.agent-download-card { border-top: 4px solid var(--esg-blue); }
+pre { font-family: Consolas, "Courier New", monospace; }

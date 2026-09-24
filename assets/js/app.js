@@ -1,241 +1,52 @@
-/* ESG - JavaScript principal */
+/* ESG - JavaScript principal con gestión de tickets, filtros y equipos */
 (function () {
     'use strict';
-
     const api = async (accion, opciones = {}) => {
         const method = opciones.method || 'GET';
-        let url = 'api.php?accion=' + encodeURIComponent(accion);
+        const url = 'api.php?accion=' + encodeURIComponent(accion);
         const fetchOptions = { method };
         if (method === 'POST') fetchOptions.body = opciones.body;
-
         const response = await fetch(url, fetchOptions);
-        const data = await response.json().catch(() => ({ ok: false, error: 'Respuesta inválida del servidor.' }));
+        const data = await response.json().catch(() => ({ ok:false, error:'Respuesta inválida del servidor.' }));
         if (!response.ok || !data.ok) throw new Error(data.error || 'Error en la operación.');
         return data;
     };
-
-    const escapeHtml = (value) => {
-        const div = document.createElement('div');
-        div.textContent = value ?? '';
-        return div.innerHTML;
-    };
-
+    const escapeHtml = (v) => { const d=document.createElement('div'); d.textContent=v ?? ''; return d.innerHTML; };
     const fotoUrl = (id) => `foto.php?id=${encodeURIComponent(id)}`;
+    const fotoHtml = (id) => `<div class="ticket-photo-actions"><a href="${fotoUrl(id)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-eye me-1"></i>Ver</a></div>`;
+    const fotoCellHtml = (id, has) => has ? `<a href="${fotoUrl(id)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-eye me-1"></i>Ver</a>` : '<span class="text-muted small">Sin foto</span>';
+    const badgeEstado = (e) => e === 'resuelto' ? '<span class="badge text-bg-success">🟢 Resuelto</span>' : '<span class="badge text-bg-warning">🟡 Pendiente</span>';
 
-    const fotoHtml = (ticketId) => `
-        <div class="ticket-photo-actions">
-            <a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-eye me-1"></i>Ver
-            </a>
-        </div>`;
+    async function cargarMisTickets(){
+        const c=document.getElementById('misTickets'); if(!c)return;
+        c.innerHTML='<div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
+        try{const data=await api('obtener_mis_tickets'); if(!data.tickets.length){c.innerHTML='<div class="empty-state"><i class="fa-regular fa-folder-open fa-2x mb-2"></i><p class="mb-0">Todavía no tenés tickets.</p></div>';return;}
+            c.innerHTML=data.tickets.map(t=>`<article class="ticket-item"><div class="d-flex justify-content-between gap-2"><h3 class="h6 mb-1">#${t.id} — ${escapeHtml(t.titulo)}</h3>${badgeEstado(t.estado)}</div><p class="mb-2 text-muted">${escapeHtml(t.descripcion)}</p><div class="small text-secondary mb-2"><strong>Número de identificación de la PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} · <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}${t.resuelto_por?' · Resuelto por: '+escapeHtml(t.resuelto_por):''}</div><div class="mt-2"><strong>Fotos:</strong></div>${t.foto?fotoHtml(t.id):'<div class="small text-muted">Sin foto adjunta.</div>'}</article>`).join('');
+        }catch(e){c.innerHTML=`<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;}
+    }
+    async function enviarTicket(e){e.preventDefault();const f=e.currentTarget,b=f.querySelector('button[type="submit"]');b.disabled=true;try{await api('crear_ticket',{method:'POST',body:new FormData(f)});await Swal.fire({icon:'success',title:'Ticket enviado',text:'La incidencia fue registrada correctamente.',confirmButtonText:'Aceptar'});f.reset();await cargarMisTickets();}catch(err){await Swal.fire({icon:'error',title:'No se pudo enviar',text:err.message});}finally{b.disabled=false;}}
 
-    const fotoCellHtml = (ticketId, tieneFoto) => tieneFoto
-        ? `<a href="${fotoUrl(ticketId)}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-eye me-1"></i>Ver
-           </a>`
-        : '<span class="text-muted small">Sin foto</span>';
+    let ticketsAdminCache=[];
+    const normDate=(v)=>{const s=String(v??'').trim(),m=s.match(/^(\d{4}-\d{2}-\d{2})/);return m?m[1]:'';};
+    const filtros=()=>({fecha:document.getElementById('filtroFecha')?.value||'',ni:(document.getElementById('filtroNI')?.value||'').trim().toLowerCase()});
+    const filtrar=()=>{const f=filtros();return ticketsAdminCache.filter(t=>(!f.fecha||normDate(t.fecha)===f.fecha)&&(!f.ni||String(t.numero_identificacion_pc??'').toLowerCase().includes(f.ni)));};
+    function renderTicketsAdmin(){const tb=document.querySelector('#tablaTickets tbody');if(!tb)return;const f=filtros(),tickets=filtrar();const r=document.getElementById('resultadoFiltros');if(r)r.textContent=(f.fecha||f.ni)?`Mostrando ${tickets.length} de ${ticketsAdminCache.length} tickets.`:`${ticketsAdminCache.length} tickets registrados.`;tb.innerHTML=tickets.length?tickets.map(t=>`<tr><td>${t.id}</td><td><strong>${escapeHtml(t.titulo)}</strong><div class="small text-muted">${escapeHtml(t.descripcion)}</div></td><td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td><td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td><td>${fotoCellHtml(t.id,!!t.foto)}</td><td>${escapeHtml(t.fecha)}</td><td>${badgeEstado(t.estado)}</td><td class="text-end text-nowrap">${t.estado==='pendiente'?`<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>`:''}<button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted py-4">No hay tickets que coincidan con los filtros.</td></tr>';}
 
-    let ticketsAdminCache = [];
+    const jsonArray=(v)=>{if(!v)return [];if(Array.isArray(v))return v;try{return JSON.parse(v)||[];}catch{return [];}};
+    const cpuResumen=(v)=>{const a=jsonArray(v);return a[0]?.Name||a[0]?.name||'-';};
+    const ramResumen=(v)=>{const a=jsonArray(v);const total=a.reduce((s,x)=>s+Number(x.Capacity||x.capacity||0),0);if(!total)return '-';const gb=total/1073741824;return `${gb.toFixed(gb>=100?0:1)} GB`;};
+    async function cargarEquipos(){const tb=document.querySelector('#tablaEquipos tbody');if(!tb)return;tb.innerHTML='<tr><td colspan="9" class="text-center text-muted py-4">Cargando equipos...</td></tr>';try{const data=await api('obtener_equipos');tb.innerHTML=data.equipos.length?data.equipos.map(e=>`<tr><td><strong>${escapeHtml(e.hostname||'-')}</strong><div class="small text-muted">${escapeHtml(e.agent_id)}</div></td><td>${escapeHtml(e.username||'-')}</td><td>${escapeHtml(e.domain_name||'-')}</td><td>${escapeHtml(e.os_name||'-')}<div class="small text-muted">${escapeHtml(e.os_version||'')}</div></td><td class="small">${escapeHtml(cpuResumen(e.cpu_json))}<br><span class="text-muted">${ramResumen(e.memory_json)}</span></td><td>${escapeHtml(e.ip_origen||'-')}</td><td>${escapeHtml(e.last_seen||'-')}</td><td class="text-end"><button class="btn btn-outline-primary btn-sm" onclick="ESGApp.verEquipo(${e.id})"><i class="fa-solid fa-eye me-1"></i>Ver</button></td></tr>`).join(''):'<tr><td colspan="9" class="text-center text-muted py-4">No hay equipos registrados.</td></tr>';}catch(err){tb.innerHTML=`<tr><td colspan="9" class="text-center text-danger">${escapeHtml(err.message)}</td></tr>`;}}
+    const pretty=(v)=>escapeHtml(JSON.stringify(v??{},null,2));
 
-    const normalizarFechaTicket = (valor) => {
-        const texto = String(valor ?? '').trim();
-        const iso = texto.match(/^(\d{4}-\d{2}-\d{2})/);
-        if (iso) return iso[1];
-        const latam = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-        if (latam) return `${latam[3]}-${latam[2]}-${latam[1]}`;
-        return '';
+    async function cargarAdmin(){const tbT=document.querySelector('#tablaTickets tbody'),tbU=document.querySelector('#tablaUsuarios tbody');if(!tbT||!tbU)return;try{const [stats,tickets,usuarios]=await Promise.all([api('obtener_estadisticas'),api('obtener_todos_tickets'),api('obtener_usuarios')]);document.getElementById('statTotal').textContent=stats.estadisticas.total;document.getElementById('statPendientes').textContent=stats.estadisticas.pendientes;document.getElementById('statResueltos').textContent=stats.estadisticas.resueltos;document.getElementById('statUsuarios').textContent=stats.estadisticas.usuarios;ticketsAdminCache=tickets.tickets||[];renderTicketsAdmin();tbU.innerHTML=usuarios.usuarios.map(u=>`<tr><td><code>${escapeHtml(u.pc_identificador)}</code></td><td>${escapeHtml(u.nombre_usuario)}</td><td>${escapeHtml(u.rol)}</td><td>${Number(u.activo)===1?'<span class="badge text-bg-success">Activo</span>':'<span class="badge text-bg-secondary">Inactivo</span>'}</td><td>${escapeHtml(u.fecha_ultima_conexion||'-')}</td><td class="text-end">${u.rol==='usuario'?`<button class="btn btn-sm ${Number(u.activo)===1?'btn-outline-danger':'btn-outline-success'}" onclick="ESGApp.toggleUsuario(${u.id})">${Number(u.activo)===1?'Desactivar':'Activar'}</button>`:'<span class="text-muted">Protegido</span>'}</td></tr>`).join('');await cargarEquipos();}catch(e){Swal.fire({icon:'error',title:'Error',text:e.message});}}
+    async function postSimple(a,d){const f=new FormData();f.append('csrf',window.ESG.csrf);Object.entries(d).forEach(([k,v])=>f.append(k,v));return api(a,{method:'POST',body:f});}
+
+    window.ESGApp={
+        marcarHecho:async id=>{const c=await Swal.fire({icon:'question',title:'¿Marcar como hecho?',text:'El ticket pasará a estado resuelto.',showCancelButton:true,confirmButtonText:'Sí, marcar',cancelButtonText:'Cancelar'});if(!c.isConfirmed)return;try{await postSimple('marcar_hecho',{id});await cargarAdmin();}catch(e){Swal.fire({icon:'error',title:'Error',text:e.message});}},
+        borrarTicket:async id=>{const c=await Swal.fire({icon:'warning',title:'¿Borrar ticket?',text:'Esta acción elimina el ticket permanentemente.',showCancelButton:true,confirmButtonText:'Sí, borrar',cancelButtonText:'Cancelar'});if(!c.isConfirmed)return;try{await postSimple('borrar_ticket',{id});await cargarAdmin();}catch(e){Swal.fire({icon:'error',title:'Error',text:e.message});}},
+        toggleUsuario:async id=>{const c=await Swal.fire({icon:'question',title:'Cambiar estado del usuario',text:'¿Deseás activar/desactivar este usuario?',showCancelButton:true,confirmButtonText:'Sí, cambiar',cancelButtonText:'Cancelar'});if(!c.isConfirmed)return;try{await postSimple('desactivar_usuario',{id});await cargarAdmin();}catch(e){Swal.fire({icon:'error',title:'Error',text:e.message});}},
+        verEquipo:async id=>{try{const response=await fetch('api.php?accion=obtener_equipo&id='+encodeURIComponent(id));const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo cargar el equipo.');const e=data.equipo;const b=document.getElementById('modalEquipoBody');const section=(t,v)=>`<div class="col-lg-6 mb-3"><div class="border rounded p-3 h-100"><h6 class="fw-bold mb-2">${t}</h6><pre class="small mb-0" style="white-space:pre-wrap;word-break:break-word;">${pretty(v)}</pre></div></div>`;b.innerHTML=`<div class="row"><div class="col-12 mb-3"><div class="row g-3"><div class="col-md-4"><strong>PC:</strong><br>${escapeHtml(e.hostname||'-')}</div><div class="col-md-4"><strong>Usuario:</strong><br>${escapeHtml(e.username||'-')}</div><div class="col-md-4"><strong>Dominio:</strong><br>${escapeHtml(e.domain_name||'-')}</div><div class="col-md-4"><strong>Sistema:</strong><br>${escapeHtml(e.os_name||'-')} ${escapeHtml(e.os_version||'')}</div><div class="col-md-4"><strong>Arquitectura:</strong><br>${escapeHtml(e.architecture||'-')}</div><div class="col-md-4"><strong>IP:</strong><br>${escapeHtml(e.ip_origen||'-')}</div></div></div>${section('CPU',e.cpu_json)}${section('Memoria RAM',e.memory_json)}${section('BIOS',e.bios_json)}${section('Placa madre',e.motherboard_json)}${section('Producto del sistema',e.system_product_json)}${section('Discos',e.disks_json)}${section('GPU',e.gpus_json)}${section('Red',e.network_json)}${section('Unidades',e.logical_disks_json)}${section('Software instalado',e.installed_software_json)}${section('Antivirus',e.antivirus_json)}</div>`;new bootstrap.Modal(document.getElementById('modalEquipo')).show();}catch(e){Swal.fire({icon:'error',title:'Error',text:e.message});}}
     };
 
-    const obtenerFiltrosAdmin = () => ({
-        fecha: document.getElementById('filtroFecha')?.value || '',
-        ni: (document.getElementById('filtroNI')?.value || '').trim().toLowerCase()
-    });
-
-    const ticketsFiltradosAdmin = () => {
-        const { fecha, ni } = obtenerFiltrosAdmin();
-        return ticketsAdminCache.filter((t) => {
-            const coincideFecha = !fecha || normalizarFechaTicket(t.fecha) === fecha;
-            const coincideNI = !ni || String(t.numero_identificacion_pc ?? '').toLowerCase().includes(ni);
-            return coincideFecha && coincideNI;
-        });
-    };
-
-    const renderTicketsAdmin = () => {
-        const tbody = document.querySelector('#tablaTickets tbody');
-        if (!tbody) return;
-        const tickets = ticketsFiltradosAdmin();
-        const total = ticketsAdminCache.length;
-        const resultado = document.getElementById('resultadoFiltros');
-        const tieneFiltros = obtenerFiltrosAdmin();
-        if (resultado) {
-            resultado.textContent = (tieneFiltros.fecha || tieneFiltros.ni)
-                ? `Mostrando ${tickets.length} de ${total} tickets.`
-                : `${total} tickets registrados.`;
-        }
-        tbody.innerHTML = tickets.length
-            ? tickets.map(t => `
-                    <tr>
-                        <td>${t.id}</td>
-                        <td>
-                            <strong>${escapeHtml(t.titulo)}</strong>
-                            <div class="small text-muted">${escapeHtml(t.descripcion)}</div>
-                        </td>
-                        <td>${escapeHtml(t.pc_origen)}<br><small>${escapeHtml(t.usuario_origen)}</small></td>
-                        <td><strong>${escapeHtml(t.numero_identificacion_pc)}</strong></td>
-                        <td>${fotoCellHtml(t.id, !!t.foto)}</td>
-                        <td>${escapeHtml(t.fecha)}</td>
-                        <td>${badgeEstado(t.estado)}</td>
-                        <td class="text-end text-nowrap">
-                            ${t.estado === 'pendiente' ? `<button class="btn btn-success btn-sm me-1" onclick="ESGApp.marcarHecho(${t.id})"><i class="fa-solid fa-check"></i></button>` : ''}
-                            <button class="btn btn-outline-danger btn-sm" onclick="ESGApp.borrarTicket(${t.id})"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `).join('')
-            : '<tr><td colspan="8" class="text-center text-muted py-4">No hay tickets que coincidan con los filtros.</td></tr>';
-    };
-
-    const badgeEstado = (estado) => estado === 'resuelto'
-        ? '<span class="badge text-bg-success">🟢 Resuelto</span>'
-        : '<span class="badge text-bg-warning">🟡 Pendiente</span>';
-
-    async function cargarMisTickets() {
-        const contenedor = document.getElementById('misTickets');
-        if (!contenedor) return;
-        contenedor.innerHTML = '<div class="text-center py-4 text-muted"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
-
-        try {
-            const data = await api('obtener_mis_tickets');
-            if (!data.tickets.length) {
-                contenedor.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open fa-2x mb-2"></i><p class="mb-0">Todavía no tenés tickets.</p></div>';
-                return;
-            }
-
-            contenedor.innerHTML = data.tickets.map(t => `
-                <article class="ticket-item">
-                    <div class="d-flex justify-content-between gap-2">
-                        <h3 class="h6 mb-1">#${t.id} — ${escapeHtml(t.titulo)}</h3>
-                        ${badgeEstado(t.estado)}
-                    </div>
-                    <p class="mb-2 text-muted">${escapeHtml(t.descripcion)}</p>
-                    <div class="small text-secondary mb-2">
-                        <strong>Número de identificación de la PC:</strong> ${escapeHtml(t.numero_identificacion_pc)} ·
-                        <i class="fa-regular fa-clock me-1"></i>${escapeHtml(t.fecha)}
-                        ${t.resuelto_por ? ' · Resuelto por: ' + escapeHtml(t.resuelto_por) : ''}
-                    </div>
-                    <div class="mt-2"><strong>Fotos:</strong></div>
-                    ${t.foto ? fotoHtml(t.id, 'ticket-foto') : '<div class="small text-muted">Sin foto adjunta.</div>'}
-                </article>
-            `).join('');
-        } catch (error) {
-            contenedor.innerHTML = `<div class="alert alert-danger">${escapeHtml(error.message)}</div>`;
-        }
-    }
-
-    async function enviarTicket(event) {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const boton = form.querySelector('button[type="submit"]');
-        boton.disabled = true;
-        try {
-            const formData = new FormData(form);
-            await api('crear_ticket', { method: 'POST', body: formData });
-            await Swal.fire({ icon: 'success', title: 'Ticket enviado', text: 'La incidencia fue registrada correctamente.', confirmButtonText: 'Aceptar' });
-            form.reset();
-            await cargarMisTickets();
-        } catch (error) {
-            await Swal.fire({ icon: 'error', title: 'No se pudo enviar', text: error.message });
-        } finally {
-            boton.disabled = false;
-        }
-    }
-
-    async function cargarAdmin() {
-        const tbodyTickets = document.querySelector('#tablaTickets tbody');
-        const tbodyUsuarios = document.querySelector('#tablaUsuarios tbody');
-        if (!tbodyTickets || !tbodyUsuarios) return;
-
-        try {
-            const [stats, tickets, usuarios] = await Promise.all([
-                api('obtener_estadisticas'),
-                api('obtener_todos_tickets'),
-                api('obtener_usuarios')
-            ]);
-
-            document.getElementById('statTotal').textContent = stats.estadisticas.total;
-            document.getElementById('statPendientes').textContent = stats.estadisticas.pendientes;
-            document.getElementById('statResueltos').textContent = stats.estadisticas.resueltos;
-            document.getElementById('statUsuarios').textContent = stats.estadisticas.usuarios;
-
-            ticketsAdminCache = tickets.tickets || [];
-            renderTicketsAdmin();
-
-            tbodyUsuarios.innerHTML = usuarios.usuarios.map(u => `
-                <tr>
-                    <td><code>${escapeHtml(u.pc_identificador)}</code></td>
-                    <td>${escapeHtml(u.nombre_usuario)}</td>
-                    <td>${escapeHtml(u.rol)}</td>
-                    <td>${Number(u.activo) === 1 ? '<span class="badge text-bg-success">Activo</span>' : '<span class="badge text-bg-secondary">Inactivo</span>'}</td>
-                    <td>${escapeHtml(u.fecha_ultima_conexion || '-')}</td>
-                    <td class="text-end">
-                        ${u.rol === 'usuario' ? `<button class="btn btn-sm ${Number(u.activo) === 1 ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="ESGApp.toggleUsuario(${u.id})">${Number(u.activo) === 1 ? 'Desactivar' : 'Activar'}</button>` : '<span class="text-muted">Protegido</span>'}
-                    </td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-        }
-    }
-
-    async function postSimple(accion, datos) {
-        const formData = new FormData();
-        formData.append('csrf', window.ESG.csrf);
-        Object.entries(datos).forEach(([k, v]) => formData.append(k, v));
-        return api(accion, { method: 'POST', body: formData });
-    }
-
-    window.ESGApp = {
-        marcarHecho: async function (id) {
-            const c = await Swal.fire({ icon: 'question', title: '¿Marcar como hecho?', text: 'El ticket pasará a estado resuelto.', showCancelButton: true, confirmButtonText: 'Sí, marcar', cancelButtonText: 'Cancelar' });
-            if (!c.isConfirmed) return;
-            try { await postSimple('marcar_hecho', { id }); await cargarAdmin(); }
-            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
-        },
-        borrarTicket: async function (id) {
-            const c = await Swal.fire({ icon: 'warning', title: '¿Borrar ticket?', text: 'Esta acción elimina el ticket permanentemente.', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
-            if (!c.isConfirmed) return;
-            try { await postSimple('borrar_ticket', { id }); await cargarAdmin(); }
-            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
-        },
-        toggleUsuario: async function (id) {
-            const c = await Swal.fire({ icon: 'question', title: 'Cambiar estado del usuario', text: '¿Deseás activar/desactivar este usuario?', showCancelButton: true, confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar' });
-            if (!c.isConfirmed) return;
-            try { await postSimple('desactivar_usuario', { id }); await cargarAdmin(); }
-            catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); }
-        }
-    };
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const ticketForm = document.getElementById('ticketForm');
-        if (ticketForm) {
-            ticketForm.addEventListener('submit', enviarTicket);
-            cargarMisTickets();
-            document.getElementById('btnActualizar')?.addEventListener('click', cargarMisTickets);
-        }
-        if (document.getElementById('tablaTickets')) {
-            cargarAdmin();
-            document.getElementById('btnActualizarAdmin')?.addEventListener('click', cargarAdmin);
-            document.getElementById('btnAplicarFiltros')?.addEventListener('click', renderTicketsAdmin);
-            document.getElementById('btnLimpiarFiltros')?.addEventListener('click', () => {
-                const fecha = document.getElementById('filtroFecha');
-                const ni = document.getElementById('filtroNI');
-                if (fecha) fecha.value = '';
-                if (ni) ni.value = '';
-                renderTicketsAdmin();
-            });
-            document.getElementById('filtroNI')?.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') renderTicketsAdmin();
-            });
-            document.getElementById('filtroFecha')?.addEventListener('change', renderTicketsAdmin);
-        }
-    });
+    document.addEventListener('DOMContentLoaded',()=>{const tf=document.getElementById('ticketForm');if(tf){tf.addEventListener('submit',enviarTicket);cargarMisTickets();document.getElementById('btnActualizar')?.addEventListener('click',cargarMisTickets);}if(document.getElementById('tablaTickets')){cargarAdmin();document.getElementById('btnActualizarAdmin')?.addEventListener('click',cargarAdmin);document.getElementById('btnActualizarEquipos')?.addEventListener('click',cargarEquipos);document.getElementById('btnAplicarFiltros')?.addEventListener('click',renderTicketsAdmin);document.getElementById('btnLimpiarFiltros')?.addEventListener('click',()=>{document.getElementById('filtroFecha').value='';document.getElementById('filtroNI').value='';renderTicketsAdmin();});document.getElementById('filtroNI')?.addEventListener('keydown',e=>{if(e.key==='Enter')renderTicketsAdmin();});document.getElementById('filtroFecha')?.addEventListener('change',renderTicketsAdmin);}});
 })();

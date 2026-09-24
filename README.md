@@ -1,361 +1,45 @@
 # ESG — Entorno Seguro y Gestión
 
-Sistema web simplificado para gestionar tickets de incidencias mediante PHP 8+ y MySQL.
+Versión con agente Windows para registrar equipos de la red.
 
-## Características
+## Qué agrega el agente
 
-- Dos roles: `SuperAdmin` y `Usuario`.
-- Panel de usuarios en `index.php`.
-- Panel exclusivo de administración en `admin.php`.
-- Tickets con título, descripción y foto opcional.
-- Estados `pendiente` y `resuelto`.
-- SuperAdmin puede marcar tickets como hechos o eliminarlos permanentemente.
-- Gestión de activación/desactivación de usuarios.
-- Instalador automático.
-- PDO + prepared statements.
-- Protección CSRF en acciones POST.
-- Protección de `/uploads`.
-- Validación de imágenes JPG/JPEG/PNG de máximo 5 MB.
-- Responsive con Bootstrap 5.
-- SweetAlert2 y FontAwesome.
+Al detectar una PC sin registrar, ESG muestra una descarga única de `ESG-Agent.exe`. El agente, al ejecutarse, obtiene y envía al servidor datos de inventario como:
 
-## Requisitos
+- Nombre del equipo, usuario de Windows y dominio.
+- Windows, versión, compilación y arquitectura.
+- CPU y núcleos/hilos.
+- Memoria RAM y módulos.
+- BIOS, placa madre y producto del sistema.
+- Discos físicos y unidades lógicas.
+- GPU y versión de controlador.
+- Adaptadores de red, IP, MAC, DNS y gateway.
+- Software instalado (desde los registros de desinstalación de Windows).
+- Antivirus detectado por SecurityCenter2 cuando está disponible.
 
-- PHP 8.0 o superior.
-- MySQL 5.7+ o compatible.
-- Apache 2.4+ o Nginx.
-- Extensión PHP PDO.
-- Driver `pdo_mysql`.
-- Extensión `fileinfo` para validar imágenes.
-- Extensión GD recomendada.
-- Permiso de escritura para `uploads/`.
-- HTTPS recomendado, especialmente en una red institucional.
+No se recolectan contraseñas ni claves de producto.
 
-## IMPORTANTE: identificación de la PC
+## Flujo
 
-PHP ejecutado en un servidor web **no puede obtener directamente el hostname ni el usuario de Windows/Linux de la PC cliente**.
+1. PC nueva abre ESG.
+2. ESG muestra **Descargar agente ESG**.
+3. El servidor genera un token de un solo uso y personaliza el EXE con la URL del servidor.
+4. El usuario ejecuta `ESG-Agent.exe`.
+5. El agente envía el inventario al endpoint de ESG.
+6. El agente abre el navegador con un enlace de vinculación de un solo uso.
+7. ESG vincula esa identidad del navegador con el equipo real y crea/actualiza el usuario.
+8. En el panel SuperAdmin aparece **Equipos registrados** y se puede ver el inventario.
 
-Por ejemplo:
+## Base de datos
 
-```php
-gethostname()
-```
+Ejecute una vez:
 
-devuelve el nombre del servidor donde corre PHP, no el nombre de la PC desde la que se abrió Chrome/Edge/Firefox.
+`actualizar_agente.sql`
 
-Asimismo:
-
-```php
-get_current_user()
-```
-
-identifica al usuario del sistema que ejecuta PHP en el servidor, no al usuario de Windows de la PC cliente.
-
-Por esa limitación, esta versión de ESG no realiza detección de hardware ni pretende fingir que `gethostname()` identifica al cliente. En su lugar:
-
-1. El servidor genera un identificador aleatorio de 32 caracteres.
-2. Ese identificador se guarda en una cookie persistente del navegador.
-3. Se usa ese identificador como `pc_identificador`.
-4. También se guarda la IP de origen.
-5. El hostname y usuario obtenidos por PHP quedan como información del servidor.
-6. No se utilizan contraseñas.
-
-Esto permite mantener la identificación simple solicitada, pero debe entenderse como **identificación por navegador**, no como identificación criptográficamente segura de una PC física.
-
-Si se necesita identificar físicamente cada PC de una red institucional, una alternativa real es utilizar certificados cliente, un agente instalado en las PCs, autenticación integrada de Windows o un proxy que agregue una identidad de máquina.
-
-## Instalación paso a paso
-
-### 1. Subir archivos
-
-Descomprimir `esg-app.zip` y subir la carpeta `esg-app` al servidor web.
-
-Ejemplo:
-
-```text
-/var/www/html/esg-app/
-```
-
-### 2. Permisos
-
-Asegurar que PHP pueda escribir en:
-
-```text
-esg-app/uploads/
-```
-
-En Linux, un ejemplo típico es:
-
-```bash
-sudo chown -R www-data:www-data /var/www/html/esg-app/uploads
-sudo chmod 750 /var/www/html/esg-app/uploads
-```
-
-Los comandos exactos dependen de la configuración de Apache/Nginx.
-
-### 3. Base de datos
-
-No es obligatorio crearla manualmente. `instalar.php` intenta crearla automáticamente.
-
-El usuario MySQL utilizado durante la instalación debe tener permisos suficientes para crear la base de datos y las tablas.
-
-Si el hosting no permite `CREATE DATABASE`, crear manualmente la base de datos y luego ejecutar `database.sql`.
-
-### 4. Abrir el instalador
-
-Acceder a:
-
-```text
-https://tudominio.com/esg-app/instalar.php
-```
-
-o, si ESG está directamente en el document root:
-
-```text
-https://tudominio.com/instalar.php
-```
-
-Completar:
-
-- Host MySQL.
-- Usuario MySQL.
-- Contraseña.
-- Nombre de base de datos.
-
-### 5. Ejecutar instalación
-
-El instalador:
-
-- crea la base de datos si tiene permisos;
-- crea las tablas;
-- registra el navegador desde el que se ejecuta como SuperAdmin;
-- crea/verifica `uploads/`;
-- comprueba que `uploads/` sea escribible.
-
-### 6. Eliminar `instalar.php`
-
-Después de una instalación exitosa:
-
-```bash
-rm instalar.php
-```
-
-Esto es importante para evitar que alguien vuelva a intentar ejecutar el instalador.
-
-### 7. Entrar al sistema
-
-Usuario común:
-
-```text
-https://tudominio.com/esg-app/index.php
-```
-
-SuperAdmin:
-
-```text
-https://tudominio.com/esg-app/admin.php
-```
-
-El navegador utilizado durante la instalación queda asociado al SuperAdmin.
-
-## Reglas de acceso
-
-### `index.php`
-
-Solo usuarios comunes.
-
-Si el usuario identificado es SuperAdmin, se redirige automáticamente a:
-
-```text
-admin.php
-```
-
-### `admin.php`
-
-Solo SuperAdmin.
-
-Si un usuario común intenta entrar, se redirige automáticamente a:
-
-```text
-index.php
-```
-
-## Tickets
-
-Un usuario puede:
-
-- crear un ticket;
-- escribir título;
-- escribir descripción;
-- adjuntar una imagen opcional;
-- consultar solamente sus propios tickets.
-
-El SuperAdmin puede:
-
-- consultar todos los tickets;
-- marcar un ticket como resuelto;
-- eliminar un ticket permanentemente.
-
-## Usuarios
-
-El SuperAdmin puede:
-
-- ver los usuarios registrados;
-- activar usuarios;
-- desactivar usuarios.
-
-El SuperAdmin no puede desactivarse desde el panel.
-
-## API
-
-Todas las acciones pasan por `api.php`.
-
-### GET
-
-```text
-obtener_mis_tickets
-obtener_todos_tickets
-obtener_usuarios
-obtener_estadisticas
-```
-
-### POST
-
-```text
-crear_ticket
-marcar_hecho
-borrar_ticket
-desactivar_usuario
-```
-
-Cada endpoint comprueba el rol correspondiente antes de ejecutar la operación.
+No modifica la tabla de tickets existente.
 
 ## Seguridad
 
-La aplicación incorpora:
+El endpoint de registro del agente usa un token aleatorio de un solo uso generado durante la descarga y con expiración. La vinculación se valida también con la IP observada por el servidor.
 
-- PDO con prepared statements.
-- Validación de entradas.
-- CSRF para operaciones POST.
-- Validación MIME de imágenes.
-- Límite de 5 MB.
-- Nombres aleatorios para imágenes.
-- `.htaccess` que bloquea el acceso directo a `/uploads`.
-- Separación estricta de paneles.
-- Escape HTML mediante `htmlspecialchars`.
-
-### HTTPS
-
-Se recomienda utilizar HTTPS en producción. La aplicación no contiene contraseñas de usuarios, por lo que la protección de la sesión y las cookies depende especialmente de una conexión segura.
-
-## Diagnóstico
-
-Existe:
-
-```text
-verificar_db.php
-```
-
-Permite comprobar:
-
-- conexión MySQL;
-- tablas existentes;
-- usuarios registrados;
-- existencia del SuperAdmin.
-
-Una vez utilizado, conviene eliminarlo o restringir su acceso en producción.
-
-## Estructura
-
-```text
-esg-app/
-├── assets/
-│   ├── css/
-│   │   └── estilo.css
-│   └── js/
-│       └── app.js
-├── includes/
-│   ├── config.php
-│   └── auth.php
-├── uploads/
-│   ├── .htaccess
-│   └── .gitkeep
-├── index.php
-├── admin.php
-├── logout.php
-├── api.php
-├── instalar.php
-├── verificar_db.php
-├── README.md
-└── database.sql
-```
-
-Durante una instalación exitosa también se genera:
-
-```text
-includes/config.local.php
-```
-
-Ese archivo contiene las credenciales de conexión a MySQL y **no debe publicarse en un repositorio público**.
-
-## Problemas comunes
-
-### Error de conexión a MySQL
-
-Comprobar:
-
-- host;
-- usuario;
-- contraseña;
-- nombre de base de datos;
-- permisos del usuario MySQL;
-- extensión `pdo_mysql`.
-
-### No se puede subir una foto
-
-Comprobar:
-
-- permisos de `uploads/`;
-- límite de `upload_max_filesize`;
-- límite de `post_max_size`;
-- tamaño máximo de 5 MB establecido por ESG;
-- formato JPG/JPEG/PNG.
-
-### El usuario aparece como otra PC
-
-ESG utiliza una cookie persistente como identificador. Si se borra la cookie, se cambia de navegador o se utiliza modo incógnito, el sistema puede generar un nuevo identificador.
-
-### Se necesita identificar la PC física
-
-Esta versión no puede hacerlo únicamente con PHP y un navegador. Para identificación física real se necesita un mecanismo adicional como:
-
-- certificado cliente;
-- agente de escritorio;
-- autenticación integrada;
-- proxy con identidad de máquina;
-- infraestructura de gestión de dispositivos.
-
-## Versión
-
-ESG 1.0.0
-
-
-## Número de identificación de la PC
-
-Al crear un ticket, el campo **Número de identificación de la PC** es obligatorio. Se guarda en `tickets.numero_identificacion_pc` y se muestra en el listado del usuario y en el panel de administración.
-
-
-## Última actualización
-- El NI de la PC es obligatorio en cada ticket.
-- El usuario puede ver el NI y la foto de sus propios tickets.
-- El SuperAdmin puede ver el NI y las fotos de todos los tickets.
-
-
-## Actualización 2026-09-23
-- NI de PC obligatorio y visible en tickets.
-- Fotos visibles para el usuario propietario y SuperAdmin.
-- Cache-busting del JavaScript para evitar que el navegador conserve la interfaz anterior.
-
-
-## Fotos de tickets
-El panel de administración muestra una columna **Fotos** para cada ticket. Los usuarios ven una sección **Fotos** dentro de sus tickets. Cada imagen se abre mediante `foto.php`, que comprueba los permisos antes de enviar el archivo.
+En producción es recomendable servir ESG bajo HTTPS con un certificado de CA confiable en las PCs. El EXE de esta versión no está firmado digitalmente; para distribución institucional conviene firmarlo con un certificado de código.
